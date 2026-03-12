@@ -8,7 +8,7 @@ const ASSETS = {
   iconPerson:    'https://www.figma.com/api/mcp/asset/54c941cf-9722-40e8-8ddd-871844280cf4',
   iconClock:     'https://www.figma.com/api/mcp/asset/4d2bfd91-0714-4527-a6de-3f9c849ff41f',
   iconCheck:     'https://www.figma.com/api/mcp/asset/11b269db-3829-42c0-9eca-56f18bb0fef3',
-  iconTagX:      'https://www.figma.com/api/mcp/asset/43b8a133-1318-4e55-937f-7659cd3a82b4',
+  // iconTagX removed — replaced with fixed toggleable chips
 }
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -24,6 +24,8 @@ const C = {
 }
 
 const IMPORT_LIMIT = 2
+
+const FIXED_TAGS = ['Quick', 'Vegetarian', 'Desserts', 'Beverage', 'Dry Dishes', 'Soup Base']
 
 function isYouTubeUrl(url) {
   try {
@@ -56,7 +58,7 @@ export default function AddRecipeScreen({ isOpen, onClose, onRecipeImported, imp
   const [step,    setStep]   = useState('url-input') // 'url-input' | 'processing' | 'review' | 'success'
   const [url,     setUrl]    = useState('')
   const [recipe,  setRecipe] = useState(null)   // extracted recipe object from API
-  const [tags,    setTags]   = useState([])
+  const [tags,    setTags]   = useState([])  // selected tags from FIXED_TAGS
   const [error,   setError]  = useState('')
   const inputRef = useRef(null)
 
@@ -103,7 +105,7 @@ export default function AddRecipeScreen({ isOpen, onClose, onRecipeImported, imp
       }
 
       setRecipe(data)
-      setTags(data.tags || [])
+      setTags([])  // always start with no tags selected
       setStep('review')
     } catch {
       setStep('url-input')
@@ -111,8 +113,8 @@ export default function AddRecipeScreen({ isOpen, onClose, onRecipeImported, imp
     }
   }
 
-  function removeTag(tag) {
-    setTags(prev => prev.filter(t => t !== tag))
+  function toggleTag(tag) {
+    setTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])
   }
 
   function handleSave() {
@@ -439,32 +441,28 @@ export default function AddRecipeScreen({ isOpen, onClose, onRecipeImported, imp
 
               </div>
 
-              {/* Editable tags */}
+              {/* Fixed toggleable tag chips */}
               <div style={{ paddingLeft: 24, paddingRight: 24 }}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {tags.map(tag => (
-                    <div
-                      key={tag}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 8,
-                        paddingLeft: 12, paddingRight: 12, paddingTop: 8, paddingBottom: 8,
-                        background: C.white, borderRadius: 9999,
-                      }}
-                    >
-                      <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 12, lineHeight: '18px', color: C.secondary, whiteSpace: 'nowrap' }}>
-                        {tag}
-                      </span>
+                  {FIXED_TAGS.map(tag => {
+                    const selected = tags.includes(tag)
+                    return (
                       <button
-                        onClick={() => removeTag(tag)}
-                        aria-label={`Remove ${tag}`}
-                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                        key={tag}
+                        onClick={() => toggleTag(tag)}
+                        style={{
+                          paddingLeft: 12, paddingRight: 12, paddingTop: 8, paddingBottom: 8,
+                          borderRadius: 9999, border: selected ? 'none' : '1px solid #e4e4e4',
+                          background: selected ? '#363636' : C.white,
+                          fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 12,
+                          lineHeight: '18px', color: selected ? '#ffffff' : C.secondary,
+                          cursor: 'pointer', whiteSpace: 'nowrap',
+                        }}
                       >
-                        <div style={{ position: 'relative', width: 12, height: 12 }}>
-                          <img src={ASSETS.iconTagX} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
-                        </div>
+                        {tag}
                       </button>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
 
