@@ -9,7 +9,6 @@ const ASSETS = {
   iconClock:     'https://www.figma.com/api/mcp/asset/4d2bfd91-0714-4527-a6de-3f9c849ff41f',
   iconCheck:     'https://www.figma.com/api/mcp/asset/11b269db-3829-42c0-9eca-56f18bb0fef3',
   iconTagX:      'https://www.figma.com/api/mcp/asset/43b8a133-1318-4e55-937f-7659cd3a82b4',
-  imgRecipe:     'https://www.figma.com/api/mcp/asset/4881a5f2-76df-48ad-a0f5-d5d748b660ff',
 }
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -21,15 +20,26 @@ const C = {
   placeholder: '#999999',
   skeleton:    'rgba(120,120,128,0.16)',
   saveBg:      '#3982f0',
+  errorText:   '#d93025',
 }
 
-const INITIAL_TAGS = ['Japanese', 'Noodle', 'Ramen', 'Spicy']
+const IMPORT_LIMIT = 2
 
-// Difficulty bars — Intermediate = [11, 5, 5] heights (bars 3px wide, gap 1px)
-function DiffBars() {
+function isYouTubeUrl(url) {
+  try {
+    const u = new URL(url.trim())
+    return u.hostname === 'youtu.be' || u.hostname.includes('youtube.com')
+  } catch {
+    return false
+  }
+}
+
+// Difficulty bars — mirrors ChatSheet DifficultyBars
+function DiffBars({ level }) {
+  const heights = level === 'Hard' ? [11, 9, 7] : [11, 5, 5]
   return (
     <div style={{ display: 'flex', alignItems: 'flex-end', gap: 1, width: 11, height: 9, flexShrink: 0 }}>
-      {[11, 5, 5].map((h, i) => (
+      {heights.map((h, i) => (
         <div key={i} style={{ width: 3, height: h, background: C.secondary, flexShrink: 0 }} />
       ))}
     </div>
@@ -38,52 +48,89 @@ function DiffBars() {
 
 // ── AddRecipeScreen ───────────────────────────────────────────────────────────
 // Props:
-//   isOpen   boolean — controls slide-in from right animation
-//   onClose  fn      — called when Cancel or Save to Collection is tapped
-export default function AddRecipeScreen({ isOpen, onClose }) {
-  const [step, setStep] = useState('url-input') // 'url-input' | 'processing' | 'review'
-  const [url,  setUrl]  = useState('')
-  const [tags, setTags] = useState(INITIAL_TAGS)
-  const inputRef        = useRef(null)
+//   isOpen            boolean — controls slide-in from right animation
+//   onClose           fn      — called when Cancel is tapped
+//   onRecipeImported  fn(recipe) — called after Save to Collection
+//   importCount       number  — how many recipes imported this session
+export default function AddRecipeScreen({ isOpen, onClose, onRecipeImported, importCount = 0 }) {
+  const [step,    setStep]   = useState('url-input') // 'url-input' | 'processing' | 'review' | 'success'
+  const [url,     setUrl]    = useState('')
+  const [recipe,  setRecipe] = useState(null)   // extracted recipe object from API
+  const [tags,    setTags]   = useState([])
+  const [error,   setError]  = useState('')
+  const inputRef = useRef(null)
 
-  // Auto-transition: processing → review after 2 seconds
-  useEffect(() => {
-    if (step !== 'processing') return
-    const t = setTimeout(() => setStep('review'), 2000)
-    return () => clearTimeout(t)
-  }, [step])
+  const atLimit = importCount >= IMPORT_LIMIT
 
-  // Reset state after the slide-out animation finishes
+  // Reset state after slide-out animation finishes
   useEffect(() => {
     if (isOpen) return
     const t = setTimeout(() => {
       setStep('url-input')
       setUrl('')
-      setTags(INITIAL_TAGS)
+      setRecipe(null)
+      setTags([])
+      setError('')
     }, 400)
     return () => clearTimeout(t)
   }, [isOpen])
 
-  function handleSubmitUrl() {
-    if (url.trim()) setStep('processing')
+  async function handleSubmitUrl() {
+    const trimmed = url.trim()
+    if (!trimmed || atLimit) return
+
+    if (!isYouTubeUrl(trimmed)) {
+      setError('Please paste a valid YouTube link.')
+      return
+    }
+
+    setError('')
+    setStep('processing')
+
+    try {
+      const res = await fetch('/api/extract-recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: trimmed }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setStep('url-input')
+        setError("Couldn't extract this recipe. Try a different YouTube video.")
+        return
+      }
+
+      setRecipe(data)
+      setTags(data.tags || [])
+      setStep('review')
+    } catch {
+      setStep('url-input')
+      setError("Couldn't extract this recipe. Try a different YouTube video.")
+    }
   }
 
   function removeTag(tag) {
     setTags(prev => prev.filter(t => t !== tag))
   }
 
+  function handleSave() {
+    if (!recipe) return
+    onRecipeImported({ ...recipe, tags })
+    setStep('success')
+    // Auto-close after showing success
+    setTimeout(() => onClose(), 2000)
+  }
+
   return (
     <div
       style={{
-        // Positioning — covers the full phone shell
         position: 'absolute',
         inset: 0,
         zIndex: 30,
-
-        // Slide-in from right
         transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
         transition: 'transform 0.35s cubic-bezier(0.4,0,0.2,1)',
-
         background: C.bg,
         display: 'flex',
         flexDirection: 'column',
@@ -92,151 +139,154 @@ export default function AddRecipeScreen({ isOpen, onClose }) {
     >
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      {/* justify-between: Cancel | Add Recipe (centered via 60px spacer) */}
-      <div
-        style={{
-          flexShrink: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingLeft: 24,
-          paddingRight: 24,
-          paddingTop: 0,
-          paddingBottom: 16,
-        }}
-      >
-        <button
-          onClick={onClose}
+      {step !== 'success' && (
+        <div
           style={{
-            background: 'none',
-            border: 'none',
-            padding: 0,
-            fontFamily: 'Inter, sans-serif',
-            fontWeight: 500,
-            fontSize: 16,
-            lineHeight: '24px',
-            color: C.secondary,
-            cursor: 'pointer',
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingLeft: 24,
+            paddingRight: 24,
+            paddingBottom: 16,
           }}
         >
-          Cancel
-        </button>
-
-        <span
-          style={{
-            fontFamily: 'Inter, sans-serif',
-            fontWeight: 600,
-            fontSize: 17,
-            lineHeight: '25.5px',
-            color: C.primary,
-          }}
-        >
-          Add Recipe
-        </span>
-
-        {/* 60px spacer mirrors Cancel width to keep title centered */}
-        <div style={{ width: 60 }} />
-      </div>
-
-      {/* ── Scrollable content area ─────────────────────────────────────────── */}
-      {/* Outer px:24 → 392px inner content width */}
-      <div
-        className="scrollbar-none"
-        style={{
-          flex: 1,
-          minHeight: 0,
-          overflowY: 'auto',
-          paddingLeft: 24,
-          paddingRight: 24,
-          paddingBottom: 32,
-        }}
-      >
-
-        {/* ── URL input field (present in all 3 states) ── */}
-        {/* pt:24, h:58, rd:16, bg white, px:16, gap:12 */}
-        <div style={{ paddingTop: 24, marginBottom: step === 'url-input' ? 12 : 32 }}>
-          <div
+          <button
+            onClick={onClose}
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              height: 58,
-              background: C.white,
-              borderRadius: 16,
-              paddingLeft: 16,
-              paddingRight: 16,
+              background: 'none', border: 'none', padding: 0,
+              fontFamily: 'Inter, sans-serif', fontWeight: 500,
+              fontSize: 16, lineHeight: '24px', color: C.secondary, cursor: 'pointer',
             }}
           >
-            {/* Chain-link icon: 20×20px — swaps to filled variant when URL entered */}
-            <div style={{ position: 'relative', width: 20, height: 20, flexShrink: 0 }}>
-              <img
-                src={url ? ASSETS.iconLinkFull : ASSETS.iconLinkEmpty}
-                alt=""
-                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-              />
-            </div>
-
-            {/* Editable input only in url-input step; other steps show static text */}
-            {step === 'url-input' ? (
-              <input
-                ref={inputRef}
-                type="text"
-                value={url}
-                onChange={e => setUrl(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleSubmitUrl()}
-                placeholder="Paste a YouTube link here..."
-                className="add-recipe-input"
-                style={{
-                  flex: 1,
-                  border: 'none',
-                  outline: 'none',
-                  background: 'transparent',
-                  fontFamily: 'Inter, sans-serif',
-                  fontWeight: 400,
-                  fontSize: 16,
-                  lineHeight: 'normal',
-                  color: C.primary,
-                  minWidth: 0,
-                }}
-              />
-            ) : (
-              <span
-                style={{
-                  flex: 1,
-                  fontFamily: 'Inter, sans-serif',
-                  fontWeight: 400,
-                  fontSize: 16,
-                  lineHeight: '22.5px',
-                  color: C.primary,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  minWidth: 0,
-                }}
-              >
-                {url || 'youtube.com/watch?v=a3k...'}
-              </span>
-            )}
-          </div>
+            Cancel
+          </button>
+          <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 17, lineHeight: '25.5px', color: C.primary }}>
+            Add Recipe
+          </span>
+          {/* 60px spacer mirrors Cancel width to keep title centered */}
+          <div style={{ width: 60 }} />
         </div>
+      )}
+
+      {/* ── Scrollable content area ─────────────────────────────────────────── */}
+      <div
+        className="scrollbar-none"
+        style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingLeft: 24, paddingRight: 24, paddingBottom: 32 }}
+      >
+
+        {/* ════════════ SUCCESS STATE ════════════ */}
+        {step === 'success' && (
+          <div
+            style={{
+              flex: 1,
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 12,
+              paddingTop: 80,
+            }}
+          >
+            <div style={{ width: 64, height: 64, borderRadius: 9999, background: C.saveBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ position: 'relative', width: 28, height: 28 }}>
+                <img src={ASSETS.iconCheck} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', filter: 'brightness(0) invert(1)' }} />
+              </div>
+            </div>
+            <p style={{ margin: 0, fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 18, lineHeight: '24px', color: C.primary }}>
+              Recipe saved!
+            </p>
+          </div>
+        )}
+
+        {/* ── URL input field (present in url-input, processing, and review states) ── */}
+        {step !== 'success' && (
+          <div style={{ paddingTop: 24, marginBottom: step === 'url-input' ? 12 : 32 }}>
+            <div
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                height: 58, background: C.white,
+                borderRadius: 16, paddingLeft: 16, paddingRight: 16,
+                opacity: atLimit && step === 'url-input' ? 0.5 : 1,
+              }}
+            >
+              <div style={{ position: 'relative', width: 20, height: 20, flexShrink: 0 }}>
+                <img
+                  src={url ? ASSETS.iconLinkFull : ASSETS.iconLinkEmpty}
+                  alt=""
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+                />
+              </div>
+
+              {step === 'url-input' ? (
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={url}
+                  onChange={e => { setUrl(e.target.value); setError('') }}
+                  onKeyDown={e => e.key === 'Enter' && handleSubmitUrl()}
+                  placeholder="Paste a YouTube link here..."
+                  disabled={atLimit}
+                  className="add-recipe-input"
+                  style={{
+                    flex: 1, border: 'none', outline: 'none', background: 'transparent',
+                    fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 16,
+                    lineHeight: 'normal', color: C.primary, minWidth: 0,
+                  }}
+                />
+              ) : (
+                <span
+                  style={{
+                    flex: 1, fontFamily: 'Inter, sans-serif', fontWeight: 400,
+                    fontSize: 16, lineHeight: '22.5px', color: C.primary,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0,
+                  }}
+                >
+                  {url}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* ════════════ URL INPUT STATE ════════════ */}
         {step === 'url-input' && (
-          // Helper text — centered, px:32, 12px/#999
-          <div style={{ display: 'flex', justifyContent: 'center', paddingLeft: 32, paddingRight: 32 }}>
-            <p
-              style={{
-                margin: 0,
-                fontFamily: 'Inter, sans-serif',
-                fontWeight: 400,
-                fontSize: 12,
-                lineHeight: '19.5px',
-                color: C.placeholder,
-                textAlign: 'center',
-              }}
-            >
-              Works with YouTube videos and Shorts.
-            </p>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, paddingLeft: 32, paddingRight: 32 }}>
+            {atLimit ? (
+              <p style={{ margin: 0, fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 12, lineHeight: '19.5px', color: C.errorText, textAlign: 'center' }}>
+                You've reached the 2 recipe import limit for this session.
+              </p>
+            ) : (
+              <>
+                <p style={{ margin: 0, fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 12, lineHeight: '19.5px', color: C.placeholder, textAlign: 'center' }}>
+                  Works with YouTube videos and Shorts.
+                </p>
+                {error && (
+                  <p style={{ margin: 0, fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 12, lineHeight: '19.5px', color: C.errorText, textAlign: 'center' }}>
+                    {error}
+                  </p>
+                )}
+                <button
+                  onClick={handleSubmitUrl}
+                  disabled={!url.trim()}
+                  style={{
+                    marginTop: 8,
+                    width: '100%',
+                    paddingTop: 14, paddingBottom: 14,
+                    borderRadius: 16,
+                    background: url.trim() ? C.saveBg : C.skeleton,
+                    border: 'none',
+                    fontFamily: 'Inter, sans-serif', fontWeight: 600,
+                    fontSize: 16, lineHeight: '24px',
+                    color: '#ffffff', cursor: url.trim() ? 'pointer' : 'default',
+                    transition: 'background 0.2s ease',
+                  }}
+                >
+                  Extract Recipe
+                </button>
+              </>
+            )}
           </div>
         )}
 
@@ -244,73 +294,39 @@ export default function AddRecipeScreen({ isOpen, onClose }) {
         {step === 'processing' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center' }}>
 
-            {/* Skeleton card — w:317, h:357.75, centered in 392px content, rd:12 */}
+            {/* Skeleton card */}
             <div
               style={{
-                width: 317,
-                height: 357.75,
-                background: C.white,
-                borderRadius: 12,
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column',
-                flexShrink: 0,
+                width: 317, height: 357.75,
+                background: C.white, borderRadius: 12,
+                overflow: 'hidden', display: 'flex', flexDirection: 'column', flexShrink: 0,
               }}
             >
-              {/* Skeleton image area — h:237.75px */}
               <div style={{ height: 237.75, background: C.skeleton, flexShrink: 0 }} />
-
-              {/* Skeleton content body — p:12, gap:12 */}
               <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
-
-                {/* Text skeleton lines — container w:249.047, gap:10 */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: 249.047 }}>
                   <div style={{ height: 14, background: C.skeleton, borderRadius: 4, opacity: 0.52 }} />
                   <div style={{ height: 14, background: C.skeleton, borderRadius: 4, opacity: 0.52, width: 175.797 }} />
                   <div style={{ height: 12, background: C.skeleton, borderRadius: 4, opacity: 0.52, width: 131.844 }} />
                 </div>
-
-                {/* Tag skeleton pills — h:24, gap:6 */}
                 <div style={{ display: 'flex', gap: 6 }}>
                   <div style={{ height: 24, width: 70,  background: C.skeleton, borderRadius: 9999, opacity: 0.52 }} />
                   <div style={{ height: 24, width: 55,  background: C.skeleton, borderRadius: 9999, opacity: 0.52 }} />
                 </div>
-
               </div>
             </div>
 
-            {/* Loading indicator — gap:4 between icon and text */}
+            {/* Spinner + label */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              {/* Spinner: 22.623px container, 16px icon, continuous CSS rotation */}
               <div
                 className="spin-animation"
-                style={{
-                  width: 22.623,
-                  height: 22.623,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}
+                style={{ width: 22.623, height: 22.623, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
               >
                 <div style={{ position: 'relative', width: 16, height: 16 }}>
-                  <img
-                    src={ASSETS.iconSpinner}
-                    alt=""
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }}
-                  />
+                  <img src={ASSETS.iconSpinner} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />
                 </div>
               </div>
-              <p
-                style={{
-                  margin: 0,
-                  fontFamily: 'Inter, sans-serif',
-                  fontWeight: 400,
-                  fontSize: 12,
-                  lineHeight: '19.5px',
-                  color: C.placeholder,
-                }}
-              >
+              <p style={{ margin: 0, fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 12, lineHeight: '19.5px', color: C.placeholder }}>
                 Extracting recipe details...
               </p>
             </div>
@@ -319,212 +335,122 @@ export default function AddRecipeScreen({ isOpen, onClose }) {
         )}
 
         {/* ════════════ REVIEW AND CONFIRM STATE ════════════ */}
-        {step === 'review' && (
+        {step === 'review' && recipe && (
           <>
-
-            {/* Recipe card — full 392px width, internal px:24 for sections → 344px */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 32, paddingTop: 16, paddingBottom: 16 }}>
 
-              {/* Upper content group — gap:12 between thumbnail+body and ingredients */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-                {/* Thumbnail + card body — px:24 → 344px */}
+                {/* Thumbnail + card body */}
                 <div style={{ paddingLeft: 24, paddingRight: 24 }}>
-
-                  {/* Recipe image — h:246, border-radius top:16 */}
-                  <div
-                    style={{
-                      height: 246,
-                      borderTopLeftRadius: 16,
-                      borderTopRightRadius: 16,
-                      overflow: 'hidden',
-                      position: 'relative',
-                    }}
-                  >
+                  <div style={{ height: 246, borderTopLeftRadius: 16, borderTopRightRadius: 16, overflow: 'hidden', position: 'relative' }}>
                     <img
-                      src={ASSETS.imgRecipe}
-                      alt="Spicy Miso Ramen"
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                      }}
+                      src={recipe.thumbnailUrl}
+                      alt={recipe.title}
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
                     />
                   </div>
 
-                  {/* Card body — bg white, px:16, py:12, rd bottom:16, gap:16 */}
                   <div
                     style={{
                       background: C.white,
-                      paddingLeft: 16,
-                      paddingRight: 16,
-                      paddingTop: 12,
-                      paddingBottom: 12,
-                      borderBottomLeftRadius: 16,
-                      borderBottomRightRadius: 16,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 16,
+                      paddingLeft: 16, paddingRight: 16, paddingTop: 12, paddingBottom: 12,
+                      borderBottomLeftRadius: 16, borderBottomRightRadius: 16,
+                      display: 'flex', flexDirection: 'column', gap: 16,
                     }}
                   >
-
-                    {/* Title + metadata — gap:8 */}
+                    {/* Title + metadata */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-
-                      {/* Title — Inter SemiBold 18px, #262626, px:4 */}
                       <div style={{ paddingLeft: 4, paddingRight: 4 }}>
-                        <p
-                          style={{
-                            margin: 0,
-                            fontFamily: 'Inter, sans-serif',
-                            fontWeight: 600,
-                            fontSize: 18,
-                            lineHeight: '24.75px',
-                            color: C.primary,
-                          }}
-                        >
-                          Spicy Miso Ramen
+                        <p style={{ margin: 0, fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 18, lineHeight: '24.75px', color: C.primary }}>
+                          {recipe.title}
                         </p>
                       </div>
 
-                      {/* Metadata row — gap:16 */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-
-                        {/* Creator — person icon 9×9 + text, pl:4, gap:4 */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, paddingLeft: 4, flexShrink: 0 }}>
                           <div style={{ position: 'relative', width: 9, height: 9, flexShrink: 0 }}>
                             <img src={ASSETS.iconPerson} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
                           </div>
                           <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 13, lineHeight: '19.5px', color: C.secondary, whiteSpace: 'nowrap' }}>
-                            Joshua Weissman
+                            {recipe.channelName}
                           </span>
                         </div>
 
-                        {/* Duration — clock icon 9×9 + text, pl:4, gap:4 */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, paddingLeft: 4, flexShrink: 0 }}>
                           <div style={{ position: 'relative', width: 9, height: 9, flexShrink: 0 }}>
                             <img src={ASSETS.iconClock} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
                           </div>
                           <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 13, lineHeight: '19.5px', color: C.secondary, whiteSpace: 'nowrap' }}>
-                            Long
+                            {recipe.metadata?.timeLevel}
                           </span>
                         </div>
 
-                        {/* Difficulty — bars 11×9 (Intermediate) + text, pl:4, gap:4 */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, paddingLeft: 4, flex: 1 }}>
-                          <DiffBars />
+                          <DiffBars level={recipe.metadata?.difficulty} />
                           <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 13, lineHeight: '19.5px', color: C.secondary, whiteSpace: 'nowrap' }}>
-                            Intermediate
+                            {recipe.metadata?.difficulty}
                           </span>
                         </div>
-
                       </div>
                     </div>
 
-                    {/* Description — Inter Regular 14px, #757575, lh:19.6, px:4 */}
+                    {/* Method summary */}
                     <div style={{ paddingLeft: 4, paddingRight: 4 }}>
-                      <p
-                        style={{
-                          margin: 0,
-                          fontFamily: 'Inter, sans-serif',
-                          fontWeight: 400,
-                          fontSize: 14,
-                          lineHeight: '19.6px',
-                          color: C.secondary,
-                        }}
-                      >
-                        A rich pork-based ramen with soft-boiled egg and homemade spicy miso tare, using a 20-minute shortcut broth method.
+                      <p style={{ margin: 0, fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 14, lineHeight: '19.6px', color: C.secondary }}>
+                        {recipe.methodSummary}
                       </p>
                     </div>
-
                   </div>
                 </div>
 
-                {/* Ingredients row — px:24 → 344px, white card rd:12, px:16, py:12, gap:8 */}
+                {/* Ingredients row */}
                 <div style={{ paddingLeft: 24, paddingRight: 24 }}>
                   <div
                     style={{
-                      background: C.white,
-                      borderRadius: 12,
-                      paddingLeft: 16,
-                      paddingRight: 16,
-                      paddingTop: 12,
-                      paddingBottom: 12,
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: 8,
+                      background: C.white, borderRadius: 12,
+                      paddingLeft: 16, paddingRight: 16, paddingTop: 12, paddingBottom: 12,
+                      display: 'flex', alignItems: 'flex-start', gap: 8,
                     }}
                   >
-                    {/* Checkmark icon — 14×15.417px */}
                     <div style={{ position: 'relative', width: 14, height: 15.417, flexShrink: 0, marginTop: 1 }}>
                       <img src={ASSETS.iconCheck} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
                     </div>
-                    {/* Ingredients text — 12px / lh:15.6 / #757575 */}
-                    <p
-                      style={{
-                        margin: 0,
-                        flex: 1,
-                        fontFamily: 'Inter, sans-serif',
-                        fontWeight: 400,
-                        fontSize: 12,
-                        lineHeight: '15.6px',
-                        color: C.secondary,
-                      }}
-                    >
+                    <p style={{ margin: 0, flex: 1, fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 12, lineHeight: '15.6px', color: C.secondary }}>
                       <strong style={{ fontWeight: 600 }}>Ingredients detected:</strong>
-                      {' '}Pork belly, Miso paste, Ramen noodles, and 9 others
+                      {' '}
+                      {(() => {
+                        const ing = recipe.ingredients || []
+                        const shown = ing.slice(0, 3).map(i => i.name).join(', ')
+                        const rest = ing.length - 3
+                        return rest > 0 ? `${shown}, and ${rest} other${rest > 1 ? 's' : ''}` : shown
+                      })()}
                     </p>
                   </div>
                 </div>
 
               </div>
 
-              {/* Tags section — px:24, flex-wrap, gap:8 */}
+              {/* Editable tags */}
               <div style={{ paddingLeft: 24, paddingRight: 24 }}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {tags.map(tag => (
                     <div
                       key={tag}
                       style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        paddingLeft: 12,
-                        paddingRight: 12,
-                        paddingTop: 8,
-                        paddingBottom: 8,
-                        background: C.white,
-                        borderRadius: 9999,
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        paddingLeft: 12, paddingRight: 12, paddingTop: 8, paddingBottom: 8,
+                        background: C.white, borderRadius: 9999,
                       }}
                     >
-                      <span
-                        style={{
-                          fontFamily: 'Inter, sans-serif',
-                          fontWeight: 500,
-                          fontSize: 12,
-                          lineHeight: '18px',
-                          color: C.secondary,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
+                      <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 12, lineHeight: '18px', color: C.secondary, whiteSpace: 'nowrap' }}>
                         {tag}
                       </span>
                       <button
                         onClick={() => removeTag(tag)}
                         aria-label={`Remove ${tag}`}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          padding: 0,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          flexShrink: 0,
-                        }}
+                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 }}
                       >
-                        {/* X icon — 12×12px */}
                         <div style={{ position: 'relative', width: 12, height: 12 }}>
                           <img src={ASSETS.iconTagX} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
                         </div>
@@ -536,31 +462,21 @@ export default function AddRecipeScreen({ isOpen, onClose }) {
 
             </div>
 
-            {/* Save to Collection button — extra px:24 within 392px content → 344px button */}
-            {/* pt:24 gap above button, button bg:#3982f0, py:16, rd:16 */}
+            {/* Save to Collection button */}
             <div style={{ paddingLeft: 24, paddingRight: 24, paddingTop: 24 }}>
               <button
-                onClick={onClose}
+                onClick={handleSave}
                 style={{
-                  width: '100%',
-                  paddingTop: 16,
-                  paddingBottom: 16,
-                  borderRadius: 16,
-                  background: C.saveBg,
-                  border: 'none',
-                  fontFamily: 'Inter, sans-serif',
-                  fontWeight: 600,
-                  fontSize: 16,
-                  lineHeight: '24px',
-                  color: '#ffffff',
-                  cursor: 'pointer',
-                  textAlign: 'center',
+                  width: '100%', paddingTop: 16, paddingBottom: 16,
+                  borderRadius: 16, background: C.saveBg, border: 'none',
+                  fontFamily: 'Inter, sans-serif', fontWeight: 600,
+                  fontSize: 16, lineHeight: '24px', color: '#ffffff',
+                  cursor: 'pointer', textAlign: 'center',
                 }}
               >
                 Save to Collection
               </button>
             </div>
-
           </>
         )}
 
