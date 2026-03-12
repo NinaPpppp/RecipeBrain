@@ -91,7 +91,7 @@ export default async function handler(req, res) {
 For timeLevel use: Quick (under 30 mins), Moderate (30-60 mins), Long (over 60 mins).
 For difficulty use: Easy, Medium, Hard.
 For videoType use: short or long-form.
-tags: select only the relevant tags from this exact list: Quick, Vegetarian, Desserts, Beverage, Dry Dishes, Soup Base. Only include tags that genuinely apply to this recipe. Do not invent new tags outside this list.
+tags: always return an empty array [].
 Set youtubeUrl to: ${url}
 Set thumbnailUrl to: ${thumbnailUrl}
 ${title ? `The video title is: ${title}` : ''}

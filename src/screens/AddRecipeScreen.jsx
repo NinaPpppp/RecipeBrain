@@ -105,7 +105,7 @@ export default function AddRecipeScreen({ isOpen, onClose, onRecipeImported, imp
       }
 
       setRecipe(data)
-      setTags(data.tags || [])  // pre-select all tags returned by Gemini
+      setTags([])  // all chips start unselected
       setStep('review')
     } catch {
       setStep('url-input')
@@ -441,32 +441,30 @@ export default function AddRecipeScreen({ isOpen, onClose, onRecipeImported, imp
 
               </div>
 
-              {/* Gemini-returned tag chips — pre-selected, toggleable off */}
-              {recipe.tags?.length > 0 && (
-                <div style={{ paddingLeft: 24, paddingRight: 24 }}>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {recipe.tags.map(tag => {
-                      const selected = tags.includes(tag)
-                      return (
-                        <button
-                          key={tag}
-                          onClick={() => toggleTag(tag)}
-                          style={{
-                            paddingLeft: 12, paddingRight: 12, paddingTop: 8, paddingBottom: 8,
-                            borderRadius: 9999, border: selected ? 'none' : '1px solid #e4e4e4',
-                            background: selected ? '#363636' : C.white,
-                            fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 12,
-                            lineHeight: '18px', color: selected ? '#ffffff' : C.secondary,
-                            cursor: 'pointer', whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {tag}
-                        </button>
-                      )
-                    })}
-                  </div>
+              {/* Fixed toggleable tag chips — all 6 options, none pre-selected */}
+              <div style={{ paddingLeft: 24, paddingRight: 24 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {FIXED_TAGS.map(tag => {
+                    const selected = tags.includes(tag)
+                    return (
+                      <button
+                        key={tag}
+                        onClick={() => toggleTag(tag)}
+                        style={{
+                          paddingLeft: 12, paddingRight: 12, paddingTop: 8, paddingBottom: 8,
+                          borderRadius: 9999, border: selected ? 'none' : '1px solid #e4e4e4',
+                          background: selected ? '#363636' : C.white,
+                          fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 12,
+                          lineHeight: '18px', color: selected ? '#ffffff' : C.secondary,
+                          cursor: 'pointer', whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {tag}
+                      </button>
+                    )
+                  })}
                 </div>
-              )}
+              </div>
 
             </div>
 
