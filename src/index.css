@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'PaperCut';
+  src: url('/src/assets/fonts/paperCut.otf') format('opentype');
+  font-weight: normal;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: #e5e5e5;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  font-family: system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Hide scrollbars while keeping scroll functionality */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+.comparison-scroll::-webkit-scrollbar { display: none; }
+.comparison-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Spinner rotation — used in AddRecipeScreen Processing state */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.spin-animation {
+  animation: spin 1s linear infinite;
+}
+
+/* Add Recipe URL input placeholder */
+.add-recipe-input::placeholder {
+  color: #999999;
+  font-family: Inter, sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+}
+
+/* Chat sheet input — placeholder color matches Figma #999999 */
+.chat-input::placeholder {
+  color: #999999;
+  font-family: Inter, sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+}
+
+/* Home Screen background via pseudo-element so opacity doesn't affect children */
+.home-screen-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url('/src/assets/images/BG_IllusFigma.png');
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  opacity: 1;
+  z-index: 0;
+}
+
+/* Phone shell — all screens render inside this */
+#phone-shell {
+  width: 440px;
+  height: 956px;
+  overflow: clip; /* clip = visual clipping only, does NOT create a scroll container */
+  position: relative;
+  background-color: #ffffff;
+  border-radius: 0;
+}
