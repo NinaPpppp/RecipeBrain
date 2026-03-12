@@ -443,6 +443,9 @@ export default function AddRecipeScreen({ isOpen, onClose, onRecipeImported, imp
 
               {/* Fixed toggleable tag chips — all 6 options, none pre-selected */}
               <div style={{ paddingLeft: 24, paddingRight: 24 }}>
+                <p style={{ margin: '0 0 8px 0', fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 13, lineHeight: '18px', color: '#262626' }}>
+                  Select one or more tags:
+                </p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {FIXED_TAGS.map(tag => {
                     const selected = tags.includes(tag)
