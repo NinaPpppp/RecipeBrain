@@ -1,5 +1,3 @@
-import { YoutubeTranscript } from 'youtube-transcript'
-
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -12,7 +10,6 @@ function extractVideoId(url) {
     if (u.hostname === 'youtu.be') return u.pathname.slice(1).split('?')[0]
     if (u.hostname.includes('youtube.com')) {
       if (u.pathname === '/watch') return u.searchParams.get('v')
-      // Shorts: /shorts/VIDEO_ID
       const shortsMatch = u.pathname.match(/^\/shorts\/([^/?]+)/)
       if (shortsMatch) return shortsMatch[1]
     }
@@ -31,8 +28,85 @@ function isYouTubeUrl(url) {
   }
 }
 
+function decodeHtmlEntities(str) {
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+}
+
+async function fetchTranscript(videoId) {
+  // Fetch the YouTube video page
+  const pageRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+    headers: {
+      'Accept-Language': 'en-US',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    },
+  })
+
+  if (!pageRes.ok) return null
+
+  const html = await pageRes.text()
+
+  // Find captionTracks in the page HTML
+  const captionIdx = html.indexOf('"captionTracks"')
+  if (captionIdx === -1) return null
+
+  // Extract the JSON array that follows "captionTracks":
+  const jsonStart = html.indexOf('[', captionIdx)
+  if (jsonStart === -1) return null
+
+  // Walk forward to find the matching closing bracket
+  let depth = 0
+  let jsonEnd = jsonStart
+  for (let i = jsonStart; i < html.length; i++) {
+    if (html[i] === '[') depth++
+    else if (html[i] === ']') {
+      depth--
+      if (depth === 0) { jsonEnd = i + 1; break }
+    }
+  }
+
+  let captionTracks
+  try {
+    captionTracks = JSON.parse(html.slice(jsonStart, jsonEnd))
+  } catch {
+    return null
+  }
+
+  if (!captionTracks || captionTracks.length === 0) return null
+
+  // Prefer English track; fall back to first available
+  const track =
+    captionTracks.find(t => t.languageCode === 'en') ||
+    captionTracks.find(t => t.languageCode?.startsWith('en')) ||
+    captionTracks[0]
+
+  const baseUrl = track?.baseUrl
+  if (!baseUrl) return null
+
+  // Fetch the XML transcript
+  const xmlRes = await fetch(baseUrl)
+  if (!xmlRes.ok) return null
+
+  const xml = await xmlRes.text()
+
+  // Extract text from all <text> tags and join
+  const texts = []
+  const tagRe = /<text[^>]*>([\s\S]*?)<\/text>/g
+  let match
+  while ((match = tagRe.exec(xml)) !== null) {
+    texts.push(decodeHtmlEntities(match[1].replace(/\n/g, ' ').trim()))
+  }
+
+  return texts.join(' ').trim() || null
+}
+
 export default async function handler(req, res) {
-  // Preflight
   if (req.method === 'OPTIONS') {
     return res.status(200).set(CORS_HEADERS).end()
   }
@@ -72,17 +146,16 @@ export default async function handler(req, res) {
 
   const thumbnailUrl = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
 
-  // Fetch transcript
+  // Fetch transcript via YouTube timedtext
   let transcriptText = ''
   try {
-    const segments = await YoutubeTranscript.fetchTranscript(videoId)
-    transcriptText = segments.map(s => s.text).join(' ')
+    transcriptText = await fetchTranscript(videoId) || ''
   } catch {
-    return res.status(422).json({ error: 'Transcript unavailable for this video' })
+    // fall through to error below
   }
 
-  if (!transcriptText.trim()) {
-    return res.status(422).json({ error: 'Transcript is empty for this video' })
+  if (!transcriptText) {
+    return res.status(422).json({ error: 'Transcript unavailable for this video' })
   }
 
   // Call Gemini 2.5 Flash
