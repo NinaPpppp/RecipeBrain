@@ -208,7 +208,6 @@ export default function AddRecipeScreen({ isOpen, onClose, onRecipeImported, imp
                 display: 'flex', alignItems: 'center', gap: 12,
                 height: 58, background: C.white,
                 borderRadius: 16, paddingLeft: 16, paddingRight: 16,
-                opacity: atLimit && step === 'url-input' ? 0.5 : 1,
               }}
             >
               <div style={{ position: 'relative', width: 20, height: 20, flexShrink: 0 }}>
@@ -233,6 +232,7 @@ export default function AddRecipeScreen({ isOpen, onClose, onRecipeImported, imp
                     flex: 1, border: 'none', outline: 'none', background: 'transparent',
                     fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 16,
                     lineHeight: 'normal', color: C.primary, minWidth: 0,
+                    opacity: atLimit ? 0.5 : 1,
                   }}
                 />
               ) : (
@@ -253,49 +253,48 @@ export default function AddRecipeScreen({ isOpen, onClose, onRecipeImported, imp
         {/* ════════════ URL INPUT STATE ════════════ */}
         {step === 'url-input' && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, paddingLeft: 32, paddingRight: 32 }}>
-            {atLimit ? (
-              <p style={{ margin: 0, fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 12, lineHeight: '19.5px', color: C.errorText, textAlign: 'center' }}>
-                You've reached the 2 recipe import limit for this session.
+            {!atLimit && (
+              <p style={{ margin: 0, fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 12, lineHeight: '19.5px', color: C.placeholder, textAlign: 'center' }}>
+                Works with YouTube videos and Shorts.
               </p>
-            ) : (
-              <>
-                <p style={{ margin: 0, fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 12, lineHeight: '19.5px', color: C.placeholder, textAlign: 'center' }}>
-                  Works with YouTube videos and Shorts.
-                </p>
-                {error && (
-                  <p style={{ margin: 0, fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 12, lineHeight: '19.5px', color: C.errorText, textAlign: 'center' }}>
-                    {error}
-                  </p>
-                )}
-                <button
-                  onClick={handleSubmitUrl}
-                  disabled={!url.trim()}
-                  style={{
-                    marginTop: 8,
-                    width: '100%',
-                    paddingTop: 14, paddingBottom: 14,
-                    borderRadius: 16,
-                    background: url.trim() ? C.saveBg : C.skeleton,
-                    border: 'none',
-                    fontFamily: 'Inter, sans-serif', fontWeight: 600,
-                    fontSize: 16, lineHeight: '24px',
-                    color: '#ffffff', cursor: url.trim() ? 'pointer' : 'default',
-                    transition: 'background 0.2s ease',
-                  }}
-                >
-                  Extract Recipe
-                </button>
-                {/* Footer — import count + caption tip */}
-                <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
-                  <p style={{ margin: 0, fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 12, lineHeight: '19.5px', color: importCount >= IMPORT_LIMIT ? C.errorText : C.placeholder, textAlign: 'center' }}>
-                    You have {IMPORT_LIMIT - importCount} of {IMPORT_LIMIT} imports remaining this session.
-                  </p>
-                  <p style={{ margin: 0, fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 12, lineHeight: '19.5px', color: C.placeholder, textAlign: 'center' }}>
-                    For best results, use videos with captions or subtitles enabled.
-                  </p>
-                </div>
-              </>
             )}
+            {error && !atLimit && (
+              <p style={{ margin: 0, fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 12, lineHeight: '19.5px', color: C.errorText, textAlign: 'center' }}>
+                {error}
+              </p>
+            )}
+            <button
+              onClick={handleSubmitUrl}
+              disabled={!url.trim() || atLimit}
+              style={{
+                marginTop: 8,
+                width: '100%',
+                paddingTop: 14, paddingBottom: 14,
+                borderRadius: 16,
+                background: url.trim() && !atLimit ? C.saveBg : C.skeleton,
+                border: 'none',
+                fontFamily: 'Inter, sans-serif', fontWeight: 600,
+                fontSize: 16, lineHeight: '24px',
+                color: '#ffffff', cursor: url.trim() && !atLimit ? 'pointer' : 'default',
+                opacity: atLimit ? 0.5 : 1,
+                transition: 'background 0.2s ease',
+              }}
+            >
+              Extract Recipe
+            </button>
+            {/* Footer — import count + caption tip */}
+            <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
+              <p style={{ margin: 0, fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 12, lineHeight: '19.5px', color: atLimit ? C.errorText : C.placeholder, textAlign: 'center' }}>
+                {atLimit
+                  ? "You've used all 2 imports for this session."
+                  : `You have ${IMPORT_LIMIT - importCount} of ${IMPORT_LIMIT} imports remaining this session.`}
+              </p>
+              {!atLimit && (
+                <p style={{ margin: 0, fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 12, lineHeight: '19.5px', color: C.placeholder, textAlign: 'center' }}>
+                  For best results, use videos with captions or subtitles enabled.
+                </p>
+              )}
+            </div>
           </div>
         )}
 
