@@ -28,84 +28,6 @@ function isYouTubeUrl(url) {
   }
 }
 
-function decodeHtmlEntities(str) {
-  return str
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
-    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
-}
-
-async function fetchTranscript(videoId) {
-  // Fetch the YouTube video page
-  const pageRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
-    headers: {
-      'Accept-Language': 'en-US',
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-    },
-  })
-
-  if (!pageRes.ok) return null
-
-  const html = await pageRes.text()
-
-  // Find captionTracks in the page HTML
-  const captionIdx = html.indexOf('"captionTracks"')
-  if (captionIdx === -1) return null
-
-  // Extract the JSON array that follows "captionTracks":
-  const jsonStart = html.indexOf('[', captionIdx)
-  if (jsonStart === -1) return null
-
-  // Walk forward to find the matching closing bracket
-  let depth = 0
-  let jsonEnd = jsonStart
-  for (let i = jsonStart; i < html.length; i++) {
-    if (html[i] === '[') depth++
-    else if (html[i] === ']') {
-      depth--
-      if (depth === 0) { jsonEnd = i + 1; break }
-    }
-  }
-
-  let captionTracks
-  try {
-    captionTracks = JSON.parse(html.slice(jsonStart, jsonEnd))
-  } catch {
-    return null
-  }
-
-  if (!captionTracks || captionTracks.length === 0) return null
-
-  // Prefer English track; fall back to first available
-  const track =
-    captionTracks.find(t => t.languageCode === 'en') ||
-    captionTracks.find(t => t.languageCode?.startsWith('en')) ||
-    captionTracks[0]
-
-  const baseUrl = track?.baseUrl
-  if (!baseUrl) return null
-
-  // Fetch the XML transcript
-  const xmlRes = await fetch(baseUrl)
-  if (!xmlRes.ok) return null
-
-  const xml = await xmlRes.text()
-
-  // Extract text from all <text> tags and join
-  const texts = []
-  const tagRe = /<text[^>]*>([\s\S]*?)<\/text>/g
-  let match
-  while ((match = tagRe.exec(xml)) !== null) {
-    texts.push(decodeHtmlEntities(match[1].replace(/\n/g, ' ').trim()))
-  }
-
-  return texts.join(' ').trim() || null
-}
-
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
     return res.status(200).set(CORS_HEADERS).end()
@@ -128,7 +50,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Could not extract video ID from URL' })
   }
 
-  // Fetch oEmbed metadata
+  // Fetch oEmbed metadata for title and channel name
   let title = ''
   let channelName = ''
   try {
@@ -141,25 +63,13 @@ export default async function handler(req, res) {
       channelName = oembed.author_name || ''
     }
   } catch {
-    // Non-fatal — continue without metadata
+    // Non-fatal — Gemini will infer from the video itself
   }
 
   const thumbnailUrl = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
 
-  // Fetch transcript via YouTube timedtext
-  let transcriptText = ''
-  try {
-    transcriptText = await fetchTranscript(videoId) || ''
-  } catch {
-    // fall through to error below
-  }
-
-  if (!transcriptText) {
-    return res.status(422).json({ error: 'Transcript unavailable for this video' })
-  }
-
-  // Call Gemini 2.5 Flash
-  const prompt = `You are a recipe data extractor. Given this YouTube video transcript and metadata, extract structured recipe data and return ONLY a valid JSON object with no markdown, no backticks, no explanation. Use exactly this schema:
+  // Send the YouTube video URL directly to Gemini — it understands video natively
+  const prompt = `You are a recipe data extractor. Watch this YouTube cooking video and extract structured recipe data. Return ONLY a valid JSON object with no markdown, no backticks, no explanation. Use exactly this schema:
 {
   "title": string,
   "channelName": string,
@@ -182,12 +92,10 @@ For timeLevel use: Quick (under 30 mins), Moderate (30-60 mins), Long (over 60 m
 For difficulty use: Easy, Medium, Hard.
 For videoType use: short or long-form.
 Tags should be 2-5 descriptive labels like cuisine type, dietary style, or occasion.
-
-Transcript: ${transcriptText.slice(0, 12000)}
-Title: ${title}
-Channel: ${channelName}
-YouTube URL: ${url}
-Thumbnail URL: ${thumbnailUrl}`
+Set youtubeUrl to: ${url}
+Set thumbnailUrl to: ${thumbnailUrl}
+${title ? `The video title is: ${title}` : ''}
+${channelName ? `The channel name is: ${channelName}` : ''}`
 
   let geminiText = ''
   try {
@@ -196,18 +104,36 @@ Thumbnail URL: ${thumbnailUrl}`
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              {
+                fileData: {
+                  mimeType: 'video/*',
+                  fileUri: url,
+                }
+              },
+              { text: prompt }
+            ]
+          }]
+        }),
       }
     )
+
     if (!geminiRes.ok) {
       const err = await geminiRes.json().catch(() => ({}))
       console.error('Gemini error:', err)
       return res.status(502).json({ error: 'AI extraction failed' })
     }
+
     const geminiData = await geminiRes.json()
     geminiText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || ''
   } catch (e) {
     console.error('Gemini fetch failed:', e)
+    return res.status(502).json({ error: 'AI extraction failed' })
+  }
+
+  if (!geminiText) {
     return res.status(502).json({ error: 'AI extraction failed' })
   }
 
@@ -227,7 +153,7 @@ Thumbnail URL: ${thumbnailUrl}`
     return res.status(502).json({ error: 'Could not parse recipe from AI response' })
   }
 
-  // Ensure URL and thumbnail are always from the real request, not hallucinated
+  // Always use the real URL and thumbnail, not anything Gemini might hallucinate
   recipe.youtubeUrl = url
   recipe.thumbnailUrl = thumbnailUrl
 
