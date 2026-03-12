@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useDragScroll } from '../hooks/useDragScroll'
 
 // Asset URLs — refreshed from Figma 2026-03-10
@@ -148,7 +148,7 @@ function RecipeCard({ title, thumbnailUrl, youtubeUrl, cookTime, difficulty, tag
 export default function HomeScreen({ recipes = [], onChatOpen, onAddOpen }) {
   const chipDrag = useDragScroll()
   const [activeChip, setActiveChip] = useState('All')
-  const [shuffled] = useState(() => {
+  const [shuffled, setShuffled] = useState(() => {
     const arr = [...recipes]
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
@@ -156,6 +156,16 @@ export default function HomeScreen({ recipes = [], onChatOpen, onAddOpen }) {
     }
     return arr
   })
+
+  // Prepend any newly imported recipes without reshuffling existing cards
+  useEffect(() => {
+    setShuffled(prev => {
+      const prevIds = new Set(prev.map(r => r.id))
+      const newOnes = recipes.filter(r => !prevIds.has(r.id))
+      if (newOnes.length === 0) return prev
+      return [...newOnes, ...prev]
+    })
+  }, [recipes])
 
   const [query, setQuery] = useState('')
 
