@@ -285,6 +285,15 @@ export default function AddRecipeScreen({ isOpen, onClose, onRecipeImported, imp
                 >
                   Extract Recipe
                 </button>
+                {/* Footer — import count + caption tip */}
+                <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
+                  <p style={{ margin: 0, fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 12, lineHeight: '19.5px', color: importCount >= IMPORT_LIMIT ? C.errorText : C.placeholder, textAlign: 'center' }}>
+                    You have {IMPORT_LIMIT - importCount} of {IMPORT_LIMIT} imports remaining this session.
+                  </p>
+                  <p style={{ margin: 0, fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 12, lineHeight: '19.5px', color: C.placeholder, textAlign: 'center' }}>
+                    For best results, use videos with captions or subtitles enabled.
+                  </p>
+                </div>
               </>
             )}
           </div>
