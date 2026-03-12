@@ -84,7 +84,7 @@ export default async function handler(req, res) {
   "tags": string[],
   "equipment": string[],
   "ingredients": [{ "name": string, "quantity": string, "unit": string }],
-  "methodSummary": string,
+  "methodSummary": string (maximum 2 sentences, be concise),
   "fullSteps": string[]
 }
 
