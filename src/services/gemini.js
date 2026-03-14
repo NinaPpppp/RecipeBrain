@@ -49,6 +49,9 @@ User: ${userMessage}`
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: fullPrompt }] }],
+          generationConfig: {
+            maxOutputTokens: 800,
+          },
         }),
       }
     )

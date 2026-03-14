@@ -46,8 +46,9 @@ simulating a phone screen) with the following screens/states:
 
 6. **Add Recipe — Review & Confirm State** — Extracted recipe card
    preview with image, title, creator, cook time, difficulty,
-   description, detected ingredients, editable tags, and
-   "Save to Collection" button.
+   description, detected ingredients summary, six fixed toggleable
+   tag chips (Quick, Vegetarian, Desserts, Beverage, Dry Dishes,
+   Soup Base — none pre-selected), and "Save to Collection" button.
 
 7. **Success Signal** — Centered checkmark icon with "Recipe saved!"
    message. Auto-redirects to Home Screen.
@@ -55,10 +56,11 @@ simulating a phone screen) with the following screens/states:
 ## Tech Stack
 - React (Vite, JSX only — no TypeScript)
 - Tailwind CSS v4 via `@tailwindcss/vite` (no `tailwind.config.js`)
-- Google Gemini 2.5 Flash (via REST API) for AI chat
+- Google Gemini 2.5 Flash (via REST API) for AI chat and recipe extraction
 - Environment variable: `VITE_GEMINI_API_KEY` in `.env`
 - Mobile-first layout (440px × 956px, no border radius)
 - Figma MCP connected for design reference
+- Vercel serverless functions (`api/` directory at project root)
 
 ## Commands
 
@@ -71,6 +73,8 @@ npm run preview  # Preview production build
 ## File Structure
 
 ```
+api/
+  extract-recipe.js     # Vercel serverless — extracts recipe from YouTube URL via Gemini
 src/
   App.jsx               # Root — mounts the phone shell and active screen
   index.css             # Tailwind import + phone shell styles + utility classes
@@ -84,7 +88,7 @@ src/
   hooks/
     useDragScroll.js    # Mouse drag-to-scroll for horizontal scroll containers
   services/
-    gemini.js           # Gemini 2.5 Flash API integration
+    gemini.js           # Gemini 2.5 Flash API integration for chat
   assets/
     fonts/
       PaperCutRegular.otf
@@ -129,6 +133,17 @@ Each entry in `recipes.js` has this shape:
 - **Structured reply** — Gemini returns a JSON envelope `{ responseType, message, recipeIds }`
   which `ChatSheet.jsx` parses to select the correct card component
 
+## Recipe Extraction API (`api/extract-recipe.js`)
+- Vercel serverless function, called by `AddRecipeScreen` via `POST /api/extract-recipe`
+- Accepts `{ url }` in the request body (must be a valid YouTube URL)
+- Fetches YouTube oEmbed (`youtube.com/oembed`) for title and channel name
+- Derives thumbnail URL from video ID: `https://i.ytimg.com/vi/{videoId}/hqdefault.jpg`
+- Sends the video URL directly to **Gemini 2.5 Flash** using `fileData` with `mimeType: 'video/*'`
+  (Gemini watches the video natively — no transcript needed)
+- Returns a recipe object matching the Recipe Data Schema
+- `tags` is always returned as `[]` from the API — user selects tags manually in the UI
+- Client enforces a **2-import limit per session** (`IMPORT_LIMIT = 2` in `AddRecipeScreen`)
+
 ## Design System (from Figma)
 - App name font: Bold yellow rounded display font ("RecipeBrain")
 - Primary blue: #3B7BF6 (buttons, AI icon, active states)
@@ -148,6 +163,6 @@ Each entry in `recipes.js` has this shape:
 - Do not invent UI that isn't in the Figma design
 
 ## Screen Build Order
-1. Home Screen
-2. Chat Starter State + Active Chat States
-3. URL Input → Processing → Review & Confirm → Success Signal
+1. Home Screen ✓
+2. Chat Starter State + Active Chat States ✓
+3. URL Input → Processing → Review & Confirm → Success Signal ✓
