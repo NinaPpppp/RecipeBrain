@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import linkIcon from '../assets/icons/icon-link.svg'
 
 // Asset URLs from Figma (nodes 146:5860, 146:5874, 146:5887)
 const ASSETS = {
@@ -212,13 +213,7 @@ export default function AddRecipeScreen({ isOpen, onClose, onRecipeImported, imp
                 borderRadius: 16, paddingLeft: 16, paddingRight: 16,
               }}
             >
-              <div style={{ position: 'relative', width: 20, height: 20, flexShrink: 0 }}>
-                <img
-                  src={url ? ASSETS.iconLinkFull : ASSETS.iconLinkEmpty}
-                  alt=""
-                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-                />
-              </div>
+              <img src={linkIcon} alt="" style={{ width: 20, height: 20, flexShrink: 0 }} />
 
               {step === 'url-input' ? (
                 <input
