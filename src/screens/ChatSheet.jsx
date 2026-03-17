@@ -2,23 +2,16 @@ import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { callGemini } from '../services/gemini'
 import { useDragScroll } from '../hooks/useDragScroll'
 
-// Asset URLs — refreshed from Figma 2026-03-10
-const ASSETS = {
-  // Sheet chrome
-  iconSend:       'https://www.figma.com/api/mcp/asset/d3804b35-30a3-4058-8476-66c63188cbdd',
-  iconClose:      'https://www.figma.com/api/mcp/asset/0fb750d6-32f1-4204-b4d7-9ed71332115d',
-  iconAIsmall:    'https://www.figma.com/api/mcp/asset/5909171d-b384-4138-8c29-ad0f743c1dc4',
-  iconAIheader:   'https://www.figma.com/api/mcp/asset/331c02e4-f8ae-4e2c-b0e9-0ac879d0b1b7',
-  // Deep Dive card
-  youtubeLogo:    'https://www.figma.com/api/mcp/asset/60045569-1eaf-4865-a560-ca634685ce09',
-  iconPerson:     'https://www.figma.com/api/mcp/asset/68a953f5-e1c6-447c-9824-a3e28921d56a',
-  iconClock:      'https://www.figma.com/api/mcp/asset/2e562bba-0dca-43ae-88ad-c25b72bfe095',
-  // Filter cards
-  filterClock:    'https://www.figma.com/api/mcp/asset/a2a29afb-303a-4fa9-842e-3335feec4b1f',
-  filterPlayBtn:  'https://www.figma.com/api/mcp/asset/e5eecc39-6941-4c75-a8dd-321bdbe6418b',
-  // Comparison card
-  comparePlay:    'https://www.figma.com/api/mcp/asset/aba757ec-a268-443c-a64f-c0f61914039c',
-}
+import iconSend from '../assets/icons/icon-send.svg'
+import iconClose from '../assets/icons/icon-close.svg'
+import iconAIsmall from '../assets/icons/icon-ai-small.svg'
+import iconAIheader from '../assets/icons/icon-ai-header.svg'
+import youtubeLogo from '../assets/icons/icon-youtube.svg'
+import iconPerson from '../assets/icons/icon-person.svg'
+import iconClock from '../assets/icons/icon-clock.svg'
+import filterClock from '../assets/icons/icon-clock.svg'
+import filterPlayBtn from '../assets/icons/icon-play.svg'
+import comparePlay from '../assets/icons/icon-play.svg'
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const C = {
@@ -99,14 +92,14 @@ function DeepDiveCard({ recipe }) {
             <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
               {/* Creator */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, paddingLeft: 4 }}>
-                <img src={ASSETS.iconPerson} alt="" style={{ width: 9, height: 9, flexShrink: 0 }} />
+                <img src={iconPerson} alt="" style={{ width: 9, height: 9, flexShrink: 0 }} />
                 <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 13, lineHeight: '19.5px', color: C.secondaryText, whiteSpace: 'nowrap' }}>
                   {recipe.channelName}
                 </span>
               </div>
               {/* Cook time */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, paddingLeft: 4 }}>
-                <img src={ASSETS.iconClock} alt="" style={{ width: 9, height: 9, flexShrink: 0 }} />
+                <img src={iconClock} alt="" style={{ width: 9, height: 9, flexShrink: 0 }} />
                 <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 13, lineHeight: '19.5px', color: C.secondaryText, whiteSpace: 'nowrap' }}>
                   {recipe.metadata?.timeLevel}
                 </span>
@@ -156,7 +149,7 @@ function DeepDiveCard({ recipe }) {
             borderRadius: 16, background: 'red', border: 'none', cursor: 'pointer',
           }}
         >
-          <img src={ASSETS.youtubeLogo} alt="" style={{ width: 26, height: 27.5, flexShrink: 0 }} />
+          <img src={youtubeLogo} alt="" style={{ width: 26, height: 27.5, flexShrink: 0 }} />
           <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 16, lineHeight: '24px', color: '#ffffff' }}>
             Watch Video
           </span>
@@ -200,7 +193,7 @@ function FilterCard({ recipes }) {
               {recipe.title}
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <img src={ASSETS.filterClock} alt="" style={{ width: 11.642, height: 11.7, flexShrink: 0 }} />
+              <img src={filterClock} alt="" style={{ width: 11.642, height: 11.7, flexShrink: 0 }} />
               <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 12, lineHeight: '18px', color: C.secondaryText }}>
                 {recipe.metadata?.timeLevel}
               </span>
@@ -216,7 +209,7 @@ function FilterCard({ recipes }) {
               padding: 8, flexShrink: 0, border: 'none', cursor: 'pointer',
             }}
           >
-            <img src={ASSETS.filterPlayBtn} alt="Watch" style={{ width: 12, height: 12, display: 'block' }} />
+            <img src={filterPlayBtn} alt="Watch" style={{ width: 12, height: 12, display: 'block' }} />
           </button>
         </div>
       ))}
@@ -300,7 +293,7 @@ function ComparisonCard({ recipes }) {
                   border: 'none', cursor: 'pointer',
                 }}
               >
-                <img src={ASSETS.comparePlay} alt="" style={{ width: 12, height: 12, display: 'block' }} />
+                <img src={comparePlay} alt="" style={{ width: 12, height: 12, display: 'block' }} />
               </button>
               {/* Name label — glass bar anchored to bottom, px:12 py:4 */}
               <div
@@ -472,7 +465,7 @@ export default function ChatSheet({ isOpen, onClose, recipes = [] }) {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0, position: 'relative', overflow: 'hidden',
               }}>
-                <img src={ASSETS.iconAIheader} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+                <img src={iconAIheader} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
               </div>
               {/* "RecipeBrain" — 20px semibold #262626 lh:30px */}
               <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 20, lineHeight: '30px', color: C.primaryText }}>
@@ -484,7 +477,7 @@ export default function ChatSheet({ isOpen, onClose, recipes = [] }) {
               aria-label="Close chat"
               style={{ width: 40, height: 40, borderRadius: 9999, background: C.cancelBg, border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0, position: 'relative', overflow: 'hidden' }}
             >
-              <img src={ASSETS.iconClose} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+              <img src={iconClose} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
             </button>
           </div>
         ) : (
@@ -495,7 +488,7 @@ export default function ChatSheet({ isOpen, onClose, recipes = [] }) {
               aria-label="Close chat"
               style={{ width: 40, height: 40, borderRadius: 9999, background: C.cancelBg, border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0, position: 'relative', overflow: 'hidden' }}
             >
-              <img src={ASSETS.iconClose} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+              <img src={iconClose} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
             </button>
           </div>
         )}
@@ -516,7 +509,7 @@ export default function ChatSheet({ isOpen, onClose, recipes = [] }) {
             }}>
               <div style={{ position: 'relative', width: 16, height: 16, flexShrink: 0 }}>
                 <div style={{ position: 'absolute', inset: '-4.37%' }}>
-                  <img src={ASSETS.iconAIsmall} alt="" style={{ display: 'block', width: '100%', height: '100%' }} />
+                  <img src={iconAIsmall} alt="" style={{ display: 'block', width: '100%', height: '100%' }} />
                 </div>
               </div>
             </div>
@@ -662,7 +655,7 @@ export default function ChatSheet({ isOpen, onClose, recipes = [] }) {
           >
             <div style={{ position: 'relative', width: 11, height: 11, flexShrink: 0 }}>
               <div style={{ position: 'absolute', inset: '-6.06%' }}>
-                <img src={ASSETS.iconSend} alt="" style={{ display: 'block', width: '100%', height: '100%' }} />
+                <img src={iconSend} alt="" style={{ display: 'block', width: '100%', height: '100%' }} />
               </div>
             </div>
           </button>

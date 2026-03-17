@@ -1,16 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
-import linkIcon from '../assets/icons/icon-link.svg'
-
-// Asset URLs from Figma (nodes 146:5860, 146:5874, 146:5887)
-const ASSETS = {
-  iconLinkEmpty: 'https://www.figma.com/api/mcp/asset/7562c50b-78e2-4374-951d-f37cc7c3dea9',
-  iconLinkFull:  'https://www.figma.com/api/mcp/asset/57d9b10c-9365-45df-bf01-400eec035c6c',
-  iconSpinner:   'https://www.figma.com/api/mcp/asset/a06c5814-6d1b-4bba-978b-7d99ebdb6d77',
-  iconPerson:    'https://www.figma.com/api/mcp/asset/54c941cf-9722-40e8-8ddd-871844280cf4',
-  iconClock:     'https://www.figma.com/api/mcp/asset/4d2bfd91-0714-4527-a6de-3f9c849ff41f',
-  iconCheck:     'https://www.figma.com/api/mcp/asset/11b269db-3829-42c0-9eca-56f18bb0fef3',
-  // iconTagX removed — replaced with fixed toggleable chips
-}
+import iconLinkEmpty from '../assets/icons/icon-link-empty.svg'
+import iconLinkFull from '../assets/icons/icon-link-full.svg'
+import iconSpinner from '../assets/icons/icon-spinner.svg'
+import iconPerson from '../assets/icons/icon-person.svg'
+import iconClock from '../assets/icons/icon-clock.svg'
+import iconCheck from '../assets/icons/icon-check.svg'
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const C = {
@@ -194,7 +188,7 @@ export default function AddRecipeScreen({ isOpen, onClose, onRecipeImported, imp
           >
             <div style={{ width: 64, height: 64, borderRadius: 9999, background: C.saveBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <div style={{ position: 'relative', width: 28, height: 28 }}>
-                <img src={ASSETS.iconCheck} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', filter: 'brightness(0) invert(1)' }} />
+                <img src={iconCheck} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', filter: 'brightness(0) invert(1)' }} />
               </div>
             </div>
             <p style={{ margin: 0, fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 18, lineHeight: '24px', color: C.primary }}>
@@ -213,7 +207,7 @@ export default function AddRecipeScreen({ isOpen, onClose, onRecipeImported, imp
                 borderRadius: 16, paddingLeft: 16, paddingRight: 16,
               }}
             >
-              <img src={linkIcon} alt="" style={{ width: 20, height: 20, flexShrink: 0 }} />
+              <img src={iconLinkEmpty} alt="" style={{ width: 20, height: 20, flexShrink: 0 }} />
 
               {step === 'url-input' ? (
                 <input
@@ -328,7 +322,7 @@ export default function AddRecipeScreen({ isOpen, onClose, onRecipeImported, imp
                 style={{ width: 22.623, height: 22.623, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
               >
                 <div style={{ position: 'relative', width: 16, height: 16 }}>
-                  <img src={ASSETS.iconSpinner} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />
+                  <img src={iconSpinner} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />
                 </div>
               </div>
               <p style={{ margin: 0, fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 12, lineHeight: '19.5px', color: C.placeholder }}>
@@ -375,7 +369,7 @@ export default function AddRecipeScreen({ isOpen, onClose, onRecipeImported, imp
                       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, paddingLeft: 4, flexShrink: 0 }}>
                           <div style={{ position: 'relative', width: 9, height: 9, flexShrink: 0 }}>
-                            <img src={ASSETS.iconPerson} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+                            <img src={iconPerson} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
                           </div>
                           <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 13, lineHeight: '19.5px', color: C.secondary, whiteSpace: 'nowrap' }}>
                             {recipe.channelName}
@@ -384,7 +378,7 @@ export default function AddRecipeScreen({ isOpen, onClose, onRecipeImported, imp
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, paddingLeft: 4, flexShrink: 0 }}>
                           <div style={{ position: 'relative', width: 9, height: 9, flexShrink: 0 }}>
-                            <img src={ASSETS.iconClock} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+                            <img src={iconClock} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
                           </div>
                           <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 13, lineHeight: '19.5px', color: C.secondary, whiteSpace: 'nowrap' }}>
                             {recipe.metadata?.timeLevel}
@@ -419,7 +413,7 @@ export default function AddRecipeScreen({ isOpen, onClose, onRecipeImported, imp
                     }}
                   >
                     <div style={{ position: 'relative', width: 14, height: 15.417, flexShrink: 0, marginTop: 1 }}>
-                      <img src={ASSETS.iconCheck} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+                      <img src={iconCheck} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
                     </div>
                     <p style={{ margin: 0, flex: 1, fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 12, lineHeight: '15.6px', color: C.secondary }}>
                       <strong style={{ fontWeight: 600 }}>Ingredients detected:</strong>

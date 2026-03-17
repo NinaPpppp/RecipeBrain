@@ -1,16 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useDragScroll } from '../hooks/useDragScroll'
 
-// Asset URLs — refreshed from Figma 2026-03-10
-const ASSETS = {
-  recipeBg:   'https://www.figma.com/api/mcp/asset/e6dde089-81da-4dff-9585-1af7acee966e',
-  iconSearch: 'https://www.figma.com/api/mcp/asset/eb71524a-cbe8-4372-bd96-8768c802243e',
-  iconClock:  'https://www.figma.com/api/mcp/asset/e05d6e24-8b4d-4c93-ae0e-c78c4f638c06',
-  iconDot:    'https://www.figma.com/api/mcp/asset/24a24e83-4525-4918-9394-c510a2624a56',
-  iconPlay:   'https://www.figma.com/api/mcp/asset/6a6b8dc8-03ab-4f20-a745-4b4b5b674e2b',
-  iconPlus:   'https://www.figma.com/api/mcp/asset/ddc7b059-154d-4a72-9a41-878dc70d79cf',
-  iconAI:     'https://www.figma.com/api/mcp/asset/7eb7324c-af56-49a1-a21a-f588cb135464',
-}
+import iconSearch from '../assets/icons/icon-search.svg'
+import iconClock from '../assets/icons/icon-clock.svg'
+import iconDot from '../assets/icons/icon-dot.svg'
+import iconPlay from '../assets/icons/icon-play.svg'
+import iconPlus from '../assets/icons/icon-plus.svg'
+import iconAI from '../assets/icons/icon-ai.svg'
+
+const recipeBg = 'https://www.figma.com/api/mcp/asset/e6dde089-81da-4dff-9585-1af7acee966e'
 
 // ── Design tokens (Figma nodes 146:1846 & 201:3887) ──────────────────────────
 const C = {
@@ -62,7 +60,7 @@ function RecipeCard({ title, thumbnailUrl, youtubeUrl, cookTime, difficulty, tag
       {/* Thumbnail — height: 113px */}
       <div style={{ position: 'relative', height: 113, width: '100%', overflow: 'hidden', flexShrink: 0 }}>
         <img
-          src={thumbnailUrl || ASSETS.recipeBg}
+          src={thumbnailUrl || recipeBg}
           alt={title}
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
         />
@@ -80,7 +78,7 @@ function RecipeCard({ title, thumbnailUrl, youtubeUrl, cookTime, difficulty, tag
             border: 'none', cursor: 'pointer',
           }}
         >
-          <img src={ASSETS.iconPlay} alt="" style={{ width: 12, height: 12, display: 'block' }} />
+          <img src={iconPlay} alt="" style={{ width: 12, height: 12, display: 'block' }} />
         </button>
       </div>
 
@@ -109,13 +107,13 @@ function RecipeCard({ title, thumbnailUrl, youtubeUrl, cookTime, difficulty, tag
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {/* Cook time */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <img src={ASSETS.iconClock} alt="" style={{ width: 11.642, height: 11.642, flexShrink: 0 }} />
+              <img src={iconClock} alt="" style={{ width: 11.642, height: 11.642, flexShrink: 0 }} />
               <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 12, lineHeight: '18px', color: C.secondaryText, whiteSpace: 'nowrap' }}>
                 {cookTime}
               </span>
             </div>
             {/* Dot separator — 2.5×2.5px */}
-            <img src={ASSETS.iconDot} alt="" style={{ width: 2.5, height: 2.5, flexShrink: 0 }} />
+            <img src={iconDot} alt="" style={{ width: 2.5, height: 2.5, flexShrink: 0 }} />
             {/* Difficulty */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <DifficultyIcon level={difficulty} />
@@ -208,7 +206,7 @@ export default function HomeScreen({ recipes = [], onChatOpen, onAddOpen }) {
           >
             <div style={{ position: 'relative', width: 18.667, height: 18.667, flexShrink: 0 }}>
               <div style={{ position: 'absolute', inset: '-5.36%' }}>
-                <img src={ASSETS.iconPlus} alt="" style={{ display: 'block', width: '100%', height: '100%' }} />
+                <img src={iconPlus} alt="" style={{ display: 'block', width: '100%', height: '100%' }} />
               </div>
             </div>
           </button>
@@ -225,7 +223,7 @@ export default function HomeScreen({ recipes = [], onChatOpen, onAddOpen }) {
               borderRadius: 16, background: C.searchBarBg,
               boxShadow: '0px 1px 2px 0px rgba(0,0,0,0.1)',
             }}>
-              <img src={ASSETS.iconSearch} alt="" style={{ width: 20, height: 20, flexShrink: 0 }} />
+              <img src={iconSearch} alt="" style={{ width: 20, height: 20, flexShrink: 0 }} />
               <input
                 type="text"
                 value={query}
@@ -320,7 +318,7 @@ export default function HomeScreen({ recipes = [], onChatOpen, onAddOpen }) {
           cursor: 'pointer', zIndex: 10,
         }}
       >
-        <img src={ASSETS.iconAI} alt="" style={{ width: 21, height: 21 }} />
+        <img src={iconAI} alt="" style={{ width: 21, height: 21 }} />
       </button>
 
     </div>
